@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+
+
+
+<head>
+    <title>FInAL BOSS</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+
+        }
+
+        #gameArea {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: black;
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            top: 500px;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+        }
+
+        #boss {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200px;
+            height: 200px;
+            z-index: 5;
+        }
+
+        #healthContainer {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 25px;
+            background-color: #444;
+            border: 2px solid #000;
+            border-radius: 5px;
+            z-index: 9999;
+        }
+
+        #healthBar {
+            height: 100%;
+            width: 100%;
+            background-color: green;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+
+        #healthContainer {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 25px;
+            background-color: #444;
+            border: 2px solid #000;
+            border-radius: 5px;
+            z-index: 9999;
+        }
+
+        #cutsceneOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            color: white;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 24px;
+            z-index: 10000;
+            padding: 20px;
+
+        }
+
+        #cutsceneText {
+            max-width: 80%;
+            white-space: pre-wrap;
+        }
+
+        #startPrompt {
+            margin-top: 20px;
+            font-size: 20px;
+            opacity: 0.7;
+        }
+
+        .attack {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+        }
+
+        .healthItem {
+            z-index: 999;
+        }
+    </style>
+
+
+
+</head>
+
+<body>
+    <audio id="BossMusic" src="BossMusic.wav" loop></audio>
+
+
+    <div id="cutsceneOverlay">
+        <img id="cutsceneImage" src="" style="width: 600px; height: 600px; object-fit: contain; margin-bottom: 20px;" />
+        <div id="cutsceneText"></div>
+    </div>
+
+    <div id="introOverlay">
+        <div id="introText"></div>
+        <div id="startPrompt" style="display: none;">Press any key to start</div>
+    </div>
+
+    <div id="healthContainer">
+        <div id="healthBar"></div>
+    </div>
+
+    <div id="gameArea">
+        <img id="boss" src="RightPunchKaden.png" />
+        <img id="player" src="BlueOrbCharacter2.png" />
+        <!-- attack elements will be added dynamically with JS -->
+    </div>
+
+    <div id="retryOverlay" style="display:none; 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); color: white; font-family: monospace;
+        justify-content: center; align-items: center; flex-direction: column; z-index: 11000;">
+        <div style="font-size: 32px; margin-bottom: 20px;">Game Over</div>
+        <button id="retryButton" style="font-size: 24px; padding: 10px 20px; cursor: pointer;">Retry</button>
+    </div>
+
+    <script>
+
+        let gameRunning = true;
+        let bossDead = false;
+        let bossAnimationInterval;
+        let attackIntervalId;
+        let healthIntervalId;
+        let BossMusic;
+
+        function playCutscene(lines, images, onComplete) {
+            const textBox = document.getElementById('cutsceneText');
+            const imageBox = document.getElementById('cutsceneImage');
+            const overlay = document.getElementById('cutsceneOverlay');
+
+            let index = 0;
+
+            function showNextLine() {
+                if (index >= lines.length) {
+                    overlay.style.display = 'none';
+                    if (onComplete) onComplete();
+                    return;
+                }
+
+                textBox.textContent = "";
+                imageBox.src = images[index];
+
+                let charIndex = 0;
+                const interval = setInterval(() => {
+                    textBox.textContent += lines[index].charAt(charIndex);
+                    charIndex++;
+                    if (charIndex >= lines[index].length) {
+                        clearInterval(interval);
+                        index++;
+                        setTimeout(showNextLine, 2500);
+                    }
+                }, 100);
+            }
+
+            overlay.style.display = 'flex';
+            showNextLine();
+
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            BossMusic.pause();
+            document.querySelectorAll('.attack').forEach(attack => attack.remove());
+
+            const retryOverlay = document.getElementById('retryOverlay');
+            retryOverlay.style.display = 'flex';
+        }
+
+        window.onload = () => {
+            BossMusic = document.getElementById('BossMusic');
+
+            document.getElementById('retryButton').addEventListener('click', () => {
+                const retryOverlay = document.getElementById('retryOverlay');
+                retryOverlay.style.display = 'none';
+                gameRunning = true;
+
+                currentHealth = 100;
+                healthBar.style.width = '100%';
+
+                BossMusic.currentTime = 0;
+
+                // Puts the player bnack to the start
+                playerX = 50;
+                playerY = 500;
+                player.style.left = `${playerX}px`;
+                player.style.top = `${playerY}px`;
+
+                // Puts thte boss back to the start
+                bossX = 0;
+                direction = 1;
+                boss.style.left = `${bossX}px`;
+
+                // gets rid of attack and health spawns
+                document.querySelectorAll('.attack, .healthItem').forEach(el => el.remove());
+
+                clearInterval(attackIntervalId);
+                clearInterval(healthIntervalId);
+
+
+                startGame(true);
+            });
+
+            const introLines = [
+                "So curiosity got the better of you huh",
+                "You might have guessed who i am by now",
+                "But its time i reveal who i really am",
+                "Thrash, Woosh, Kaching",
+                "Thats right its me",
+                "Im the stonesman and this is my stone",
+                "And now that you know the truth",
+                "Your gonna swim with the fishies"
+            ];
+
+            const introImages = [
+                "Black.png",
+                "Black.png",
+                "Black.png",
+                "Black.png",
+                "ItsMeKaden.png",
+                "ThoughtKaden.png",
+                "AngryKaden.png",
+                "CombatKaden.png"
+            ];
+
+            playCutscene(introLines, introImages, () => {
+                startGame();
+            })
+
+
+            function endGame() {
+
+                bossDead = true;
+
+                BossMusic.pause();
+
+                gameRunning = false;
+
+                document.querySelectorAll('.attack').forEach(attack => attack.remove());
+
+                const boss = document.getElementById('boss');
+
+                clearInterval(bossAnimationInterval);
+
+                boss.src = "DeathShockKaden.png";
+
+                setTimeout(() => {
+                    let velocityY = -3;
+                    let gravity = 1.2;
+                    let bossY = boss.offsetTop;
+
+                    function animatedDeathFall() {
+                        velocityY += gravity;
+                        bossY += velocityY;
+                        boss.style.top = `${bossY}px`;
+
+                        if (bossY < window.innerHeight) {
+                            requestAnimationFrame(animatedDeathFall);
+                        } else {
+                            const endLines = [
+                                "AGHHHHHHHHHHHHHHHHH",
+                                "This cant be...",
+                                "How could i have been bested by someone who cant reach the middle shelf",
+                                "This is not over...",
+                                "I promise..."
+                            ];
+
+                            const endImages = [
+                                "ShockedHandOnHeadKaden.png",
+                                "LowHealthKade.png",
+                                "LowHealthKade.png",
+                                "YellKaden.png",
+                                "LowHealthKade.png"
+
+                            ];
+
+                            playCutscene(endLines, endImages, () => {
+                                window.location.href = "finalpresent.html";
+                            });
+                        }
+                    }
+                    animatedDeathFall();
+                }, 3000)
+            }
+
+            function startGame() {
+
+
+                BossMusic.volume = 0.7;
+                BossMusic.currentTime = 0;
+                BossMusic.play();
+
+
+
+
+                const player = document.getElementById('player');
+                let playerX = 50;
+                let playerY = 500;
+
+                //Boss Variables
+
+                const boss = document.getElementById('boss');
+                let bossX = 0;
+                let direction = 1;
+                let usingAltImage = false;
+
+                //Health Variuables
+
+                let maxHealth = 100;
+                let currentHealth = 100;
+                const healthBar = document.getElementById('healthBar');
+
+
+
+                document.addEventListener('keydown', (e) => {
+
+                    if (!gameRunning) return;
+
+                    if (e.key === 'ArrowLeft') playerX -= 75;
+                    if (e.key === 'ArrowRight') playerX += 75;
+                    if (e.key === 'ArrowUp') playerY -= 75;
+                    if (e.key === 'ArrowDown') playerY += 75;
+
+                    playerX = Math.max(0, Math.min(window.innerWidth - 50, playerX));
+                    playerY = Math.max(0, Math.min(window.innerHeight - 50, playerY));
+
+                    player.style.left = `${playerX}px`;
+                    player.style.top = `${playerY}px`;
+                })
+
+
+                function spawnAttack() {
+
+                    if (!gameRunning) return;
+
+                    const attack = document.createElement('img');
+                    attack.src = 'Fist.png';
+                    attack.className = 'attack';
+                    attack.style.top = '0px';
+                    attack.style.left = `${Math.random() * (window.innerWidth - 50)}px`;
+                    attack.style.transform = 'rotate(-90deg)';
+                    attack.style.width = '100px';
+                    attack.style.height = '100px';
+                    document.getElementById('gameArea').appendChild(attack)
+
+                    let attackY = 0;
+                    const interval = setInterval(() => {
+                        attackY += 5;
+                        attack.style.top = `${attackY}px`;
+
+                        const attackRect = attack.getBoundingClientRect();
+                        const playerRect = player.getBoundingClientRect();
+
+                        const hitboxMargin = 10;
+
+                        if (
+                            (attackRect.left + hitboxMargin) < (playerRect.right - hitboxMargin) &&
+                            (attackRect.right - hitboxMargin) > (playerRect.left + hitboxMargin) &&
+                            (attackRect.top + hitboxMargin) < (playerRect.bottom - hitboxMargin) &&
+                            (attackRect.bottom - hitboxMargin) > (playerRect.top + hitboxMargin)
+                        ) {
+                            clearInterval(interval);
+                            gameOver();
+                        }
+
+                        if (attackY > window.innerHeight) {
+                            clearInterval(interval);
+                            attack.remove();
+                        }
+                    }, 30);
+                }
+
+
+                function moveBoss() {
+                    if (bossDead) return;
+                    bossX += direction * 3;
+
+                    if (bossX <= 0 || bossX >= window.innerWidth - boss.offsetWidth) {
+                        direction *= -1;
+                    }
+
+                    boss.style.left = `${bossX}px`;
+                    requestAnimationFrame(moveBoss);
+                }
+
+                function spawnHealthItem() {
+
+                    const item = document.createElement('img');
+                    item.src = "Cigs.png";
+                    item.className = 'healthItem';
+                    item.style.position = 'absolute';
+                    item.style.width = '60px';
+                    item.style.height = '60px';
+                    item.style.left = `${Math.random() * (window.innerWidth - 60)}px`;
+                    item.style.top = `${Math.random() * (window.innerHeight - 60)}px`;
+                    document.getElementById('gameArea').appendChild(item);
+
+                    const checkCollision = setInterval(() => {
+
+                        if (!gameRunning) {
+                            clearInterval(checkCollision);
+                            return;
+                        }
+
+                        const itemRect = item.getBoundingClientRect();
+                        const playerRect = player.getBoundingClientRect();
+
+                        if (
+                            itemRect.left < playerRect.right &&
+                            itemRect.right > playerRect.left &&
+                            itemRect.top < playerRect.bottom &&
+                            itemRect.bottom > playerRect.top
+                        ) {
+
+                            removeHealth(20);
+                            item.remove();
+                            clearInterval(checkCollision);
+
+                        }
+                    }, 30);
+
+                }
+
+                function removeHealth(amount) {
+                    currentHealth = Math.max(0, currentHealth - amount);
+                    const healthPercent = (currentHealth / maxHealth) * 100;
+                    healthBar.style.width = `${healthPercent}%`;
+
+                    if (currentHealth <= 0) {
+                        endGame();
+                    }
+                }
+
+                function typeWriter(text, elementId, callback) {
+                    const element = document.getElementById(elementId);
+                    let i = 0;
+                    const interval = setInterval(() => {
+                        element.textContent += text.charAt(i);
+                        i++
+                        if (i == text.length) {
+                            clearInterval(interval);
+                            if (callback) callback();
+                        }
+
+                    }, 1000);
+
+                }
+
+
+
+
+
+
+
+                moveBoss();
+
+                bossAnimationInterval = setInterval(() => {
+                    if (!bossDead) {
+                        boss.src = usingAltImage ? "LeftPunchKaden.png" : "RightPunchKaden.png";
+                        usingAltImage = !usingAltImage;
+                    }
+                }, 1500);
+
+                attackIntervalId = setInterval(spawnAttack, 500);
+                healthIntervalId = setInterval(spawnHealthItem, 5000);
+
+            };
+        }
+    </script>
+
+</body>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Safe Trial</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: rgb(255, 255, 255);
+            color: white;
+        }
+
+        #textBox {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%);
+            width: 100%;
+            max-width: 90%;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1em 1.5em;
+            margin-bottom: 1vh;
+            font-size: 2rem;
+            color: rgb(0, 0, 0);
+            margin-top: 1em;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #hiddenHotspot {
+            position: absolute;
+            top: 50%;
+            left: 70%;
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+            z-index: 2;
+            background-color: rgba(255, 0, 0, 0.3);
+        }
+
+        #safeImageClosed {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Safe Trial</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: rgb(255, 255, 255);
+            color: white;
+        }
+
+        #textBox {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%);
+            width: 100%;
+            max-width: 90%;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1em 1.5em;
+            margin-bottom: 1vh;
+            font-size: 2rem;
+            color: rgb(0, 0, 0);
+            margin-top: 1em;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #hiddenHotspot {
+            position: absolute;
+            top: 50%;
+            left: 70%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        #safeImage {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            z-index: 1;
+        }
+
+        #safeOpenImage {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            z-index: 1;
+
+        }
+
+        #beeNest {
+            display: none;
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            z-index: 30;
+            top: 20%;
+            left: 20%;
+        }
+
+        #bee {
+            display: none;
+            position: absolute;
+            width: 50px;
+            height: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="textBox"></div>
+    <div id="hiddenHotspot"></div>
+    <img id="safeImage" src="safedoorclosed.png" alt="safe" />
+    <img id="safeOpenImage" src="safedooropen.png" alt="safeOpenImage" />
+    <img id="beeNest" src="BeeNest.png" alt="beeNest" />
+    <img id="bee" src="bee.png" alt="bee" />
+
+    <script>
+        const lines = [
+            "Hmm, Laura is that you?",
+            "Why are you here",
+            "Actually that doesn’t matter, there’s nothing here so just go away.",
+            "I'm being serious, did you expect a present? This is just a blank webpage.",
+            "Who am I, dont worry about that just be on your way",
+            "Please just leave and whatever you do, DO NOT click around."
+        ];
+
+        const postRevealLines = [
+            "You just couldnt NOT click around huh.",
+            "Fine, you discovered a safe, so waht. You'll never be able to open it anyway",
+            "I mean im no safe expert but this looks real secure",
+            "So i think you should stop poking the bees nest and buzz off"
+        ];
+
+        const postBeeNestLines = [
+            ".........................",
+            "What the flip",
+            "Where did that even come from",
+            "I woudlnt touch that, nothing good comes out of messing with bees",
+            "BEElieve me"
+        ];
+
+        const postSafeOpenLines = [
+            "UnBEEleviable, the safe actually opened",
+            "Well i hope your happy because all those bees are now dead",
+            "Well its not like i can stop you now, click the safe to continue"
+        ];
+
+
+        let currentLine = 0;
+        let postRevealIndex = 0;
+        let postBeeNestIndex = 0;
+        let postSafeOpenIndex = 0;
+        let typing = false;
+        let revealedSafe = false;
+
+
+
+        function typeLine(line, index = 0, callback = nextLine) {
+            const textBox = document.getElementById('textBox');
+            textBox.textContent = line.slice(0, index);
+
+            if (index < line.length) {
+                typing = true;
+                setTimeout(() => typeLine(line, index + 1, callback), 75);
+            } else {
+                typing = false;
+                setTimeout(() => callback(), 3000); // Auto advance
+            }
+        }
+
+        function nextLine() {
+            if (typing) return;
+
+            if (!revealedSafe) {
+                if (currentLine <= lines.length) {
+                    typeLine(lines[currentLine]);
+                    currentLine++;
+                }
+            } else if (revealedSafe && postRevealIndex < postRevealLines.length) {
+
+                typeLine(postRevealLines[postRevealIndex], 0, () => {
+                    postRevealIndex++;
+                    if (postRevealIndex < postRevealLines.length) {
+                        nextLine();
+                    } else {
+                        setTimeout(spawnBeeNest, 1000); // spawn after last line finishes
+                    }
+                });
+                // if (currentLine < postRevealLines.length) {
+                //     typeLine(postRevealLines[currentLine]);
+                //     currentLine++;
+                // } else if (currentLine === postRevealLines.length) {
+                //     spawnBeeNest();
+                //     currentLine++; // Move past so it doesn't keep spawning
+                // } else {
+                //     // Do nothing, all text is finished
+                // }
+            }
+        }
+
+        // Start intro automatically
+        window.onload = () => {
+            nextLine();
+        };
+
+        document.getElementById("hiddenHotspot").addEventListener("click", () => {
+            if (!revealedSafe) {
+                revealedSafe = true;
+                currentLine = 0;
+                document.getElementById("safeImage").style.display = "block";
+                setTimeout(() => {
+                    nextLine();
+                }, 1000);
+            }
+        });
+
+        let beeCount = 0;
+        const beeLimit = 20;
+
+        function spawnBeeNest() {
+            const beeNest = document.getElementById("beeNest");
+            beeNest.style.display = "block";
+
+            postBeeNestIndex = 0;
+
+            let canClickBeeNest = true;
+
+            beeNest.addEventListener("click", () => {
+
+                if (!canClickBeeNest || beeCount >= beeLimit) return;
+
+                canClickBeeNest = false;
+                setTimeout(() => canClickBeeNest = true, 1000);
+
+                spawnBee();
+                beeCount++;
+
+                if (beeCount === 1) {
+                    typeLine("Just One bee, whats that going to do to the impregnible safe")
+                } else if (beeCount === 5) {
+                    typeLine("Okay okay, i think you can stop now thats too many bees")
+                } else if (beeCount === 12) {
+                    typeLine("Please stop this madness, these bees are innocent")
+                } else if (beeCount === 17) {
+                    typeLine("Wait are the bees using their body heat to melt the locks off the safe")
+                }
+                if (beeCount === beeLimit) {
+                    openSafe();
+                }
+            });
+
+            currentLine = 0;
+
+            function typePostBeeNestLines() {
+                if (currentLine < postBeeNestLines.length) {
+                    typeLine(postBeeNestLines[currentLine], 0, typePostBeeNestLines);
+                    currentLine++;
+                }
+            }
+
+            setTimeout(typePostBeeNestLines, 2000);
+        }
+
+        function spawnBee() {
+            const bee = document.createElement("img");
+            bee.src = "bee.png";
+            bee.alt = "bee";
+            bee.style.position = "absolute";
+            bee.style.width = "50px";
+            bee.style.height = "50px";
+            bee.style.left = `${Math.random() * window.innerWidth}px`;
+            bee.style.top = `${Math.random() * window.innerHeight}px`;
+            bee.style.zIndex = 20;
+            document.body.appendChild(bee);
+
+            moveBeeToSafe(bee);
+        }
+
+        function moveBeeToSafe(bee) {
+            const safe = document.getElementById("safeImage");
+            const rect = safe.getBoundingClientRect();
+            const targetX = rect.left + rect.width / 2;
+            const targetY = rect.top + rect.height / 2;
+
+            function animate() {
+                const beeRect = bee.getBoundingClientRect();
+                const dx = targetX - (beeRect.left + beeRect.width / 2);
+                const dy = targetY - (beeRect.top + beeRect.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 5) {
+                    bee.style.left = `${bee.offsetLeft + dx * 0.05}px`;
+                    bee.style.top = `${bee.offsetTop + dy * 0.05}px`;
+                    requestAnimationFrame(animate);
+                }
+            }
+
+            animate();
+
+        }
+
+        function openSafe() {
+            document.getElementById("safeImage").style.display = "none";
+            const open = document.getElementById("safeOpenImage");
+            open.style.display = "block";
+
+            document.getElementById("beeNest").style.display = "none";
+
+            document.querySelectorAll(`img[src="bee.png"]`).forEach(bee => bee.remove());
+
+            postSafeOpenIndex = 0;
+
+            function typePostSafeLines() {
+
+                if (postSafeOpenIndex < postSafeOpenLines.length) {
+                    typeLine(postSafeOpenLines[postSafeOpenIndex], 0, typePostSafeLines);
+                    postSafeOpenIndex++;
+                }
+
+            }
+
+            setTimeout(typePostSafeLines, 1000);
+
+            open.addEventListener("click", () => {
+                window.location.href = "Fire.html"
+            })
+        }
+    </script>
+
+</body>
+
+</html>

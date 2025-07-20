@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<head>
+    <title>Final Present</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #present {
+            display: none;
+            width: 400px;
+            height: 400px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <img id="present" src="present.png" alt="Present Image"/>
+
+    <script>
+        const present = document.getElementById('present');
+
+        setTimeout(() => {
+            present.style.display = 'block'
+            
+        }, 5000);
+
+        present.onclick = () => {
+            window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        };
+    </script>
+</body>

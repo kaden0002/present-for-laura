@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Escape the Fire</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #ffffff;
+            color: rgb(0, 0, 0);
+            overflow: hidden;
+        }
+
+        #fireContainer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column-reverse;
+            /* Stack from bottom up */
+            z-index: 0;
+        }
+
+        .fireImage {
+            width: 100%;
+            height: 20vh;
+            pointer-events: none;
+            /* 1/5 of the viewport height */
+
+        }
+
+        #content {
+            position: relative;
+            z-index: 1;
+            padding: 2em;
+        }
+
+        #timer {
+            position: fixed;
+            top: 1vh;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            font-weight: bold;
+            z-index: 10;
+            color: black;
+        }
+
+        #message {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%);
+            width: 100%;
+            max-width: 90%;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1em 1.5em;
+            margin-bottom: 1vh;
+            font-size: 2rem;
+            color: rgb(0, 0, 0);
+            margin-top: 1em;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #checkmark {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            z-index: 90;
+            animation: popIn 0.5s ease-out forwards;
+        }
+
+        #inputContainer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        input {
+            border: 2px solid #e8e8e8;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #66b5ff;
+            font-size: small;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <audio id="flameAudio" src="fire.wav" loop></audio>
+    <audio id="lightMatchAudio" src="MatchLightSound.mp3"></audio>
+    <img id="doorImage" src="Door.png"
+        style="display: none; cursor: pointer; z-index: 99; width: 450px; height: 600; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"
+        alt="Door to next area">
+    <div id="fireContainer"></div>
+    <img id="sign" src="woodSign.png" alt="sign"
+        style="display:block; cursor:pointer; width:150px; position:absolute; top:70%; left:50%; transform:translate(-50%, -50%); z-index: 10;" />
+
+    <div id="riddleBox"
+        style="display:none; position:fixed; top:30%; left:50%; transform:translateX(-50%); background:#fff; border:2px solid #333; padding:20px; width:300px; text-align:center; z-index: 999;">
+        <p id="riddleText">I rise in the morning but never sleep.
+            I’m found in ovens and often you eat.
+            My crown is not gold, but flour and heat.
+            Among all loaves, one man stands supreme.
+            His name begins with "K" and ends with might.
+            Type his full title to prove you’re right.
+        </p>
+        <button id="closeRiddleBtn">Close</button>
+    </div>
+    <div id="content">
+        <div id="timer">Time Left: <span id="time">60</span>s</div>
+        <div id="inputContainer">
+            <input id="input" placeholder="Type something..." autofocus />
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <button id="nextBtn" style="
+        display: none;
+        position: fixed;
+        bottom: 150px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 25px;
+        font-size: 1.2rem;
+        background-color: #ff5555;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        z-index: 9999;">
+        Nexteroni
+        ;">
+
+    </button>
+
+
+
+    <button id="retryBtn" style="
+        display: none;
+        position: fixed;
+        bottom: 150px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 25px;
+        font-size: 1.2rem;
+        background-color: #ff5555;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        z-index: 9999;">
+        Retry 🔁
+    </button>
+
+    <script>
+        const maxTime = 60;
+        const totalFireLayers = 5; // Each fire image = 20% of screen
+        const intervalPerFire = Math.floor(maxTime / totalFireLayers); // Add fire every X seconds
+
+        let timeLeft = maxTime;
+        let timer;
+        let fireLayersAdded = 0;
+        let puzzleSolved = false;
+        let allowFireMessages = true;
+        let fireStarted = false;
+
+        const fireContainer = document.getElementById('fireContainer');
+        const timeDisplay = document.getElementById('time');
+        const input = document.getElementById('input');
+        const message = document.getElementById('message');
+
+        const fireMessages = [
+            "Cough Cough Jee Gosh that smells like fire",
+            "Quick i never installed fire alarms, no one will know a fire is here",
+            "PLEASE PLEASE PLEASE PLEAS EPLEASE",
+            "Why did i never install fire doors either",
+            "Its over, the fire is near and im ready, take me"
+        ];
+
+        const endMessages = [
+            "Phew that was close",
+            "Now that you have bested this, i think its time to go home now",
+            "I mean look around theres nothing here",
+            "All that work for nothing, really just go home"
+        ];
+
+        const startMessages = [
+            "This room, i never thought anyone would get here",
+            "I made this room as a place of self reflection after a great victory",
+            "Here theres only one phrase to prevent ceritan doom",
+            "If only i could remeber what that was",
+            "Oh wait i left a sign here that gave a clue"
+        ];
+
+
+        function playMessageInOrder(messages, delayBetween = 5000, onComplete = null) {
+            let i = 0;
+
+
+            function next() {
+                if (i < messages.length) {
+                    typeLine(messages[i]);
+                    i++
+                    setTimeout(next, messages[i - 1].length * 85 + delayBetween);
+                } else if (onComplete) {
+                    onComplete();
+                }
+
+            }
+            next();
+
+        }
+
+        function startGame() {
+            playMessageInOrder(startMessages, 1500, () => {
+                const sign = document.getElementById("sign");
+                sign.style.display = "block";
+                // Wait for riddle to be closed before fire starts
+            });
+        }
+
+
+
+
+        function addFireImage() {
+            if (fireLayersAdded >= totalFireLayers) return;
+
+            const fireImg = document.createElement('img');
+            fireImg.src = "https://t4.ftcdn.net/jpg/06/23/93/71/360_F_623937191_FRs81nAZyRO7diWg4hLFRss7YuBZxL4s.jpg"; // Example transparent fire image
+            fireImg.classList.add('fireImage');
+            fireContainer.appendChild(fireImg);
+            fireLayersAdded++;
+        }
+
+
+        function failPuzzle() {
+            retryBtn.style.display = "block";
+
+
+            input.disabled = true;
+            message.textContent = "The fire consumes all";
+            document.body.style.background = '#300';
+        }
+
+        function solvePuzzle() {
+            if (puzzleSolved) return; // Prevent double triggering
+            puzzleSolved = true;
+
+            const flameAudio = document.getElementById('flameAudio');
+            flameAudio.pause();
+            flameAudio.currentTime = 0;
+
+            allowFireMessages = false;
+            clearInterval(timer);
+            fireContainer.innerHTML = "";
+            document.getElementById("checkmark").style.display = "block";
+            setTimeout(() => {
+                playMessageInOrder(endMessages, 1500, () => {
+
+                    setTimeout(() => {
+
+                        document.getElementById("inputContainer").style.display = "none";
+
+                        document.getElementById("checkmark").style.display = "none";
+                        document.getElementById("sign").style.display = "none";
+                        const door = document.getElementById('doorImage');
+                        door.style.display = 'block';
+
+                        const finalText = [
+                            "Huh what's that?",
+                            "A convient door that allows you to go from this trial into the final encounter!",
+                            "Fine then, click the door when your ready to the learn the truth behind this all"
+                        ];
+
+                        playMessageInOrder(finalText, 1500, () => {
+
+                            door.classList.add("clickable-door");
+                        });
+
+                        door.onclick = () => {
+                            window.location.href = "finalboss.html";
+                        };
+                    }, 9000);
+                });
+
+            }, 1000);
+        }
+
+        function startCountdown() {
+            timer = setInterval(() => {
+                timeLeft--;
+                timeDisplay.textContent = timeLeft;
+
+                if (timeLeft % intervalPerFire === 0 && fireLayersAdded < totalFireLayers) {
+                    addFireImage();
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    failPuzzle();
+                }
+            }, 1000);
+        }
+
+        const messageBox = document.getElementById('message');
+
+        function typeLine(line, index = 0) {
+            if (index === 0) messageBox.textContent = ""; // clear before typing
+            messageBox.textContent = line.slice(0, index);
+            if (index < line.length) {
+                setTimeout(() => typeLine(line, index + 1), 50);
+            }
+        }
+
+
+
+
+        const messageTimings = [0, 10, 20, 30, 40];
+
+
+        function scheduleMessages() {
+            messageTimings.forEach((time, i) => {
+                setTimeout(() => {
+                    if (allowFireMessages) {
+                        typeLine(fireMessages[i])
+                    }
+                }, time * 1000); // convert seconds to ms
+            });
+        }
+
+        function resetGame() {
+            // Reset vvairbahle
+            timeLeft = maxTime;
+            fireLayersAdded = 0;
+            puzzleSolved = false;
+            allowFireMessages = true;
+
+            // Clear fire imas
+            fireContainer.innerHTML = "";
+
+            // Reset all in put
+            input.disabled = false;
+            input.value = "";
+            input.focus();
+
+            // Reset messages
+            message.textContent = "";
+            document.body.style.background = '#fff';
+
+            // Hide retry bntn
+            const retryBtn = document.getElementById("retryBtn");
+            retryBtn.style.display = "none";
+
+            // Reset timer display
+            timeDisplay.textContent = timeLeft;
+
+            // Stop any existing timer before restarting
+            clearInterval(timer);
+
+            // Start countdown and schedule messages again
+            startCountdown();
+            scheduleMessages();
+        }
+
+        function startFireEncounter() {
+            const lightMatchAudio = document.getElementById('lightMatchAudio');
+            lightMatchAudio.volume = 1;
+            lightMatchAudio.play();
+
+            lightMatchAudio.onended = () => {
+                const flameAudio = document.getElementById('flameAudio');
+                flameAudio.volume = 1;
+                flameAudio.play();
+                startCountdown();
+                scheduleMessages();
+            };
+        }
+
+
+        input.addEventListener('input', () => {
+            const value = input.value.trim().toUpperCase();
+            if (value.replace(/[^A-Z]/g, '') === "KADENTHEBREADKING") {
+                solvePuzzle();
+            }
+
+        });
+
+
+        document.getElementById("retryBtn").addEventListener("click", () => {
+            resetGame();
+        });
+        window.addEventListener("DOMContentLoaded", () => {
+            startGame();
+        });
+        const sign = document.getElementById("sign");
+        const riddleBox = document.getElementById("riddleBox");
+        const closeRiddleBtn = document.getElementById("closeRiddleBtn");
+
+        sign.addEventListener("click", () => {
+            riddleBox.style.display = "block";
+        });
+
+        closeRiddleBtn.addEventListener("click", () => {
+            riddleBox.style.display = "none";
+            if (!fireStarted) {
+                fireStarted = true;
+                startFireEncounter();
+            }
+        });
+    </script>
+    <img id="checkmark"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Yes_Check_Circle.svg/1024px-Yes_Check_Circle.svg.png"
+        alt="Success">
+
+</body>
+
+</html>
